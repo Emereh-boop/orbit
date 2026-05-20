@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ORBIT — Free AI Tool & Resource Tracker</title>
+<meta name="description" content="The best curated, free AI tool directory. Updated weekly."/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<!-- Supabase JS (for auth only — data comes from your Express API) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="style.css">
+<script src="script.js"></script>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="logo-row" href="#">
+    <div class="logo-icon"></div>
+    <span class="logo-name">ORBIT</span>
+  </a>
+  <div class="nav-links">
+    <span id="user-display"></span>
+    <button class="nav-btn" id="loginBtn" onclick="openAuth()">Sign In</button>
+    <button class="nav-btn primary" id="submitNavBtn" onclick="switchTab('submit')">+ Submit Tool</button>
+    <button class="nav-btn" id="adminNavBtn" style="display:none" onclick="switchTab('admin')">Admin ⚙</button>
+    <button class="nav-btn" id="logoutBtn" style="display:none" onclick="handleLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="header-glow"></div>
+  <div class="header-glow2"></div>
+  <h1>The Free AI Tool<br><span>Resource Tracker</span></h1>
+  <p class="tagline">// curated · community-tested · updated weekly</p>
+  <div class="stats-row">
+    <div class="stat"><span class="stat-n" id="total-count">—</span><span class="stat-l">Tools Listed</span></div>
+    <div class="stat"><span class="stat-n">6</span><span class="stat-l">Categories</span></div>
+    <div class="stat"><span class="stat-n">Weekly</span><span class="stat-l">Updates</span></div>
+  </div>
+</header>
+
+<!-- ── TAB BAR ── -->
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('tools')">Tools</button>
+  <button class="tab" onclick="switchTab('changelog')">Changelog</button>
+  <button class="tab" onclick="switchTab('submit')">Submit a Tool</button>
+</div>
+
+<!-- ═══════════════ TOOLS PANEL ═══════════════ -->
+<div class="panel active" id="panel-tools">
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="search" type="text" placeholder="Search tools, categories, tags…"/>
+    </div>
+    <div class="filter-group" id="filters">
+      <button class="filter-btn active" data-cat="all">All</button>
+      <button class="filter-btn" data-cat="writing">Writing</button>
+      <button class="filter-btn" data-cat="image">Image</button>
+      <button class="filter-btn" data-cat="code">Code</button>
+      <button class="filter-btn" data-cat="audio">Audio</button>
+      <button class="filter-btn" data-cat="research">Research</button>
+      <button class="filter-btn" data-cat="productivity">Productivity</button>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="gridBtn" title="Grid">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><rect x="0" y="0" width="6" height="6" rx="1"/><rect x="10" y="0" width="6" height="6" rx="1"/><rect x="0" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>
+      </button>
+      <button class="view-btn" id="listBtn" title="List">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><rect x="0" y="1" width="16" height="2" rx="1"/><rect x="0" y="7" width="16" height="2" rx="1"/><rect x="0" y="13" width="16" height="2" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+  <main>
+    <div class="section-header">
+      <span class="section-title">Showing</span>
+      <span class="section-count" id="showing-count">loading…</span>
+    </div>
+    <div id="grid"></div>
+  </main>
+</div>
+
+<!-- ═══════════════ CHANGELOG PANEL ═══════════════ -->
+<div class="panel" id="panel-changelog">
+  <div class="changelog-wrap" id="changelog-content">
+    <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);padding:40px 0">loading changelog…</div>
+  </div>
+</div>
+
+<!-- ═══════════════ SUBMIT PANEL ═══════════════ -->
+<div class="panel" id="panel-submit">
+  <div class="submit-wrap">
+    <h2>Submit a Tool</h2>
+    <p>Know a great AI tool we're missing? Submit it below — we review every submission weekly and publish the best ones. No account required.</p>
+
+    <div class="submit-success" id="submit-success">
+      <h3>🎉 Submission received!</h3>
+      <p>We review new tools every week. If it's a good fit for ORBIT, it'll appear in the next changelog update.</p>
+    </div>
+
+    <div id="submit-form-wrap">
+      <div class="form-group">
+        <label>Tool Name *</label>
+        <input type="text" id="sub-name" placeholder="e.g. Runway ML"/>
+      </div>
+      <div class="form-group">
+        <label>URL *</label>
+        <input type="url" id="sub-url" placeholder="https://runwayml.com"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="sub-category">
+            <option value="writing">Writing</option>
+            <option value="image">Image</option>
+            <option value="code">Code</option>
+            <option value="audio">Audio</option>
+            <option value="research">Research</option>
+            <option value="productivity">Productivity</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Pricing</label>
+          <select id="sub-pricing">
+            <option value="free">Free</option>
+            <option value="freemium" selected>Freemium</option>
+            <option value="paid">Paid</option>
+            <option value="open">Open Source</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Why should we add it? (optional)</label>
+        <textarea id="sub-desc" placeholder="What makes this tool stand out? Who is it best for?"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Your Email (optional — for attribution)</label>
+        <input type="email" id="sub-email" placeholder="you@example.com"/>
+        <p class="form-note">// we never share your email or use it for marketing</p>
+      </div>
+      <button class="btn-primary" id="submitToolBtn" onclick="submitTool()">Submit Tool →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ADMIN PANEL ═══════════════ -->
+<div class="panel" id="panel-admin">
+  <div class="admin-wrap">
+    <h2>Admin — Pending Submissions</h2>
+    <div id="admin-table-wrap">
+      <p style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">Sign in as admin to manage submissions.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOOL MODAL ── -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-icon" id="mIcon"></div>
+    <div class="modal-name" id="mName"></div>
+    <div class="modal-category" id="mCat"></div>
+    <p class="modal-desc" id="mDesc"></p>
+    <div class="modal-tags" id="mTags"></div>
+    <div class="modal-actions">
+      <a href="#" id="mLink" class="btn-primary" target="_blank" rel="noopener noreferrer">Visit Tool ↗</a>
+      <a href="#" id="mAffLink" class="btn-secondary" target="_blank" rel="noopener noreferrer" style="display:none">Affiliate Link ↗</a>
+      <button class="btn-secondary" id="mBookmark">☆ Bookmark</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AUTH MODAL ── -->
+<div class="modal-bg" id="auth-modal">
+  <div class="auth-modal">
+    <button class="modal-close" onclick="closeAuth()">✕</button>
+    <h2 id="auth-title">Sign In to ORBIT</h2>
+    <p id="auth-subtitle">Bookmark tools, get changelog alerts, and more.</p>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="you@example.com"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••"/>
+    </div>
+    <button class="btn-primary" style="width:100%" id="auth-submit-btn" onclick="handleAuth()">Sign In</button>
+    <div class="auth-switch">
+      <span id="auth-switch-text">No account?</span>
+      <a onclick="toggleAuthMode()">Sign up free</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <span>ORBIT v2.0 · Powered by Supabase + Express</span>
+  <span id="footer-user">Updated weekly · <a href="#" onclick="switchTab('submit')" style="color:var(--accent2);text-decoration:none">Submit a tool →</a></span>
+</footer>
+
+</body>
+</html>
