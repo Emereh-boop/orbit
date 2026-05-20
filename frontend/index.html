@@ -1,248 +1,307 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>ORBIT — AI Tool Discovery Hub</title>
-<meta name="description" content="Find the best AI tools for any job. Comparison mode, curated collections, weekly new launches. Updated every week."/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>ORBIT — AI Tool Discovery Hub</title>
+  <meta name="description"
+    content="Find the best AI tools for any job. Comparison mode, curated collections, weekly new launches. Updated every week." />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext x='0' y='14' font-family='Segoe UI' font-size='16'%3EO%3C/text%3E%3C/svg%3E">
+  <!-- Supabase JS (for auth only — data comes from your Express API) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
+
 <body>
 
-<!-- NAV -->
-<nav>
-  <div class="logo" onclick="switchTab('tools')">
-    <div class="logo-ring"></div>
-    <span class="logo-name">ORBIT</span>
+  <!-- NAV -->
+  <nav>
+    <div class="logo" onclick="switchTab('tools')">
+      <div class="logo-ring"></div>
+      <span class="logo-name">ORBIT</span>
+    </div>
+    <div class="nav-right">
+      <span id="uname"></span>
+      <button class="nb compare-active" id="compareNavBtn" style="display:none" onclick="switchTab('compare')">
+        Compare <span id="compare-count">0</span>
+      </button>
+      <button class="nb" id="loginBtn" onclick="openAuth()">Sign In</button>
+      <button class="nb primary" onclick="switchTab('submit')">+ Submit Tool</button>
+      <button class="nb" id="adminBtn" style="display:none" onclick="switchTab('admin')">Admin ⚙</button>
+      <button class="nb" id="logoutBtn" style="display:none" onclick="doLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- NEW LAUNCHES BANNER -->
+  <div class="launches-banner">
+    <div class="launches-inner" id="launches-inner">
+      <span class="launch-label">🚀 New This Week</span>
+    </div>
   </div>
-  <div class="nav-right">
-    <span id="uname"></span>
-    <button class="nb compare-active" id="compareNavBtn" style="display:none" onclick="switchTab('compare')">
-      Compare <span id="compare-count">0</span>
-    </button>
-    <button class="nb" id="loginBtn" onclick="openAuth()">Sign In</button>
-    <button class="nb primary" onclick="switchTab('submit')">+ Submit Tool</button>
-    <button class="nb" id="adminBtn" style="display:none" onclick="switchTab('admin')">Admin ⚙</button>
-    <button class="nb" id="logoutBtn" style="display:none" onclick="doLogout()">Sign Out</button>
+
+  <!-- HEADER -->
+  <header>
+    <div class="hglow hg1"></div>
+    <div class="hglow hg2"></div>
+    <h1>Discover the best<br><span>AI tools for any job</span></h1>
+    <p class="tagline">// 17 tools · 6 categories · comparison mode · updated weekly</p>
+    <div class="stats-row">
+      <div><span class="stat-n" id="total-count">—</span><span class="stat-l">Tools Listed</span></div>
+      <div><span class="stat-n">6</span><span class="stat-l">Categories</span></div>
+      <div><span class="stat-n" id="new-count">—</span><span class="stat-l">New This Week</span></div>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab active" data-tab="tools">Tools</button>
+    <button class="tab" data-tab="wtuf">What to Use For</button>
+    <button class="tab" data-tab="collections">Collections</button>
+    <button class="tab" data-tab="changelog">Changelog</button>
+    <button class="tab" data-tab="submit">Submit a Tool</button>
   </div>
-</nav>
 
-<!-- NEW LAUNCHES BANNER -->
-<div class="launches-banner">
-  <div class="launches-inner" id="launches-inner">
-    <span class="launch-label">🚀 New This Week</span>
-  </div>
-</div>
+  <!-- ═══ TOOLS PANEL ═══ -->
+  <div class="panel active" id="panel-tools">
+    <div class="tools-layout">
 
-<!-- HEADER -->
-<header>
-  <div class="hglow hg1"></div><div class="hglow hg2"></div>
-  <h1>Discover the best<br><span>AI tools for any job</span></h1>
-  <p class="tagline">// 17 tools · 6 categories · comparison mode · updated weekly</p>
-  <div class="stats-row">
-    <div><span class="stat-n" id="total-count">—</span><span class="stat-l">Tools Listed</span></div>
-    <div><span class="stat-n">6</span><span class="stat-l">Categories</span></div>
-    <div><span class="stat-n" id="new-count">—</span><span class="stat-l">New This Week</span></div>
-  </div>
-</header>
-
-<!-- TABS -->
-<div class="tab-bar">
-  <button class="tab active" data-tab="tools">Tools</button>
-  <button class="tab" data-tab="wtuf">What to Use For</button>
-  <button class="tab" data-tab="collections">Collections</button>
-  <button class="tab" data-tab="changelog">Changelog</button>
-  <button class="tab" data-tab="submit">Submit a Tool</button>
-</div>
-
-<!-- ═══ TOOLS PANEL ═══ -->
-<div class="panel active" id="panel-tools">
-  <div class="tools-layout">
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="sidebar-section">
-        <div class="sidebar-title">Category</div>
-        <div id="cat-filters"></div>
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-title">Pricing</div>
-        <div class="price-row" id="price-filters">
-          <label class="price-check"><input type="checkbox" value="free" onchange="togglePrice(this)"> Free</label>
-          <label class="price-check"><input type="checkbox" value="freemium" onchange="togglePrice(this)"> Freemium</label>
-          <label class="price-check"><input type="checkbox" value="paid" onchange="togglePrice(this)"> Paid</label>
-          <label class="price-check"><input type="checkbox" value="open" onchange="togglePrice(this)"> Open Source</label>
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-title">Category</div>
+          <div id="cat-filters"></div>
         </div>
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-title">Use Case</div>
-        <div class="usecase-list" id="uc-filters"></div>
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-title">Integrations</div>
-        <input class="integration-search" placeholder="e.g. Slack, Notion…" oninput="filterIntegrations(this.value)" id="int-search"/>
-        <div id="int-tags"></div>
-      </div>
-      <div class="sidebar-section">
-        <div class="sidebar-title">Maturity</div>
-        <div class="maturity-row">
-          <button class="mat-btn" data-mat="stable" onclick="toggleMaturity(this)"><span class="mat-dot" style="background:#34d399"></span>Stable</button>
-          <button class="mat-btn" data-mat="beta" onclick="toggleMaturity(this)"><span class="mat-dot" style="background:#fbbf24"></span>Beta</button>
-          <button class="mat-btn" data-mat="mature" onclick="toggleMaturity(this)"><span class="mat-dot" style="background:#a78bfa"></span>Mature</button>
+        <div class="sidebar-section">
+          <div class="sidebar-title">Pricing</div>
+          <div class="price-row" id="price-filters">
+            <label class="price-check"><input type="checkbox" value="free" onchange="togglePrice(this)"> Free</label>
+            <label class="price-check"><input type="checkbox" value="freemium" onchange="togglePrice(this)">
+              Freemium</label>
+            <label class="price-check"><input type="checkbox" value="paid" onchange="togglePrice(this)"> Paid</label>
+            <label class="price-check"><input type="checkbox" value="open" onchange="togglePrice(this)"> Open
+              Source</label>
+          </div>
         </div>
-      </div>
-      <div class="sidebar-section">
-        <button class="clear-btn" onclick="clearFilters()">// clear all filters</button>
-      </div>
-    </aside>
-
-    <!-- MAIN TOOLS AREA -->
-    <div class="tools-main">
-      <div class="top-bar">
-        <div class="search-wrap">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input id="search" type="text" placeholder="Search tools, features, integrations…" oninput="render()"/>
+        <div class="sidebar-section">
+          <div class="sidebar-title">Use Case</div>
+          <div class="usecase-list" id="uc-filters"></div>
         </div>
-        <select class="sort-select" id="sort-by" onchange="render()">
-          <option value="default">Sort: Default</option>
-          <option value="newest">Newest First</option>
-          <option value="alpha">A → Z</option>
-          <option value="price">Free First</option>
-        </select>
-        <div class="view-btns">
-          <button class="vb active" id="gridBtn" title="Grid">⊞</button>
-          <button class="vb" id="listBtn" title="List">≡</button>
+        <div class="sidebar-section">
+          <div class="sidebar-title">Integrations</div>
+          <input class="integration-search" placeholder="e.g. Slack, Notion…" oninput="filterIntegrations(this.value)"
+            id="int-search" />
+          <div id="int-tags"></div>
         </div>
+        <div class="sidebar-section">
+          <div class="sidebar-title">Maturity</div>
+          <div class="maturity-row">
+            <button class="mat-btn" data-mat="stable" onclick="toggleMaturity(this)"><span class="mat-dot"
+                style="background:#34d399"></span>Stable</button>
+            <button class="mat-btn" data-mat="beta" onclick="toggleMaturity(this)"><span class="mat-dot"
+                style="background:#fbbf24"></span>Beta</button>
+            <button class="mat-btn" data-mat="mature" onclick="toggleMaturity(this)"><span class="mat-dot"
+                style="background:#a78bfa"></span>Mature</button>
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <button class="clear-btn" onclick="clearFilters()">// clear all filters</button>
+        </div>
+      </aside>
+
+      <!-- MAIN TOOLS AREA -->
+      <div class="tools-main">
+        <div class="top-bar">
+          <div class="search-wrap">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input id="search" type="text" placeholder="Search tools, features, integrations…" oninput="render()" />
+          </div>
+          <select class="sort-select" id="sort-by" onchange="render()">
+            <option value="default">Sort: Default</option>
+            <option value="newest">Newest First</option>
+            <option value="alpha">A → Z</option>
+            <option value="price">Free First</option>
+          </select>
+          <div class="view-btns">
+            <button class="vb active" id="gridBtn" title="Grid">⊞</button>
+            <button class="vb" id="listBtn" title="List">≡</button>
+          </div>
+        </div>
+        <div class="result-line" id="result-line">loading…</div>
+        <div id="grid"></div>
       </div>
-      <div class="result-line" id="result-line">loading…</div>
-      <div id="grid"></div>
     </div>
   </div>
-</div>
 
-<!-- ═══ COMPARE PANEL ═══ -->
-<div class="panel" id="panel-compare">
-  <div class="compare-view open" id="compare-view">
-    <div class="compare-header">
-      <h2>Tool Comparison</h2>
-      <button class="nb" onclick="switchTab('tools')">← Back to tools</button>
-    </div>
-    <div id="compare-content"></div>
-  </div>
-</div>
-
-<!-- ═══ WHAT TO USE FOR ═══ -->
-<div class="panel" id="panel-wtuf">
-  <div class="wtuf-panel">
-    <h2>What AI tool should I use for…</h2>
-    <p>Quick answers to the most common AI tool questions. Click any use case to see the top picks and why.</p>
-    <div class="wtuf-search-wrap">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="wtuf-search" placeholder="e.g. writing emails, editing code, removing background…" oninput="filterUseCases(this.value)"/>
-    </div>
-    <div class="use-case-grid" id="uc-grid"></div>
-  </div>
-</div>
-
-<!-- ═══ COLLECTIONS ═══ -->
-<div class="panel" id="panel-collections">
-  <div class="collections-panel">
-    <h2>Curated Collections</h2>
-    <p>Handpicked tool stacks for specific jobs and workflows.</p>
-    <div class="coll-grid" id="coll-grid"></div>
-  </div>
-</div>
-
-<!-- ═══ CHANGELOG ═══ -->
-<div class="panel" id="panel-changelog">
-  <div class="cl-panel" id="cl-content">
-    <p style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">loading changelog…</p>
-  </div>
-</div>
-
-<!-- ═══ SUBMIT ═══ -->
-<div class="panel" id="panel-submit">
-  <div class="sub-panel">
-    <h2>Submit a Tool</h2>
-    <p>Found a great AI tool we're missing? Submit it — we review every submission weekly and publish the best ones. No account required.</p>
-    <div class="sub-success" id="sub-success">
-      <h3>🎉 Submission received!</h3>
-      <p>We review new tools every week. If it's a great fit, it'll appear in the next changelog update.</p>
-    </div>
-    <div id="sub-form">
-      <div class="fg"><label>Tool Name *</label><input type="text" id="sub-name" placeholder="e.g. Runway ML"/></div>
-      <div class="fg"><label>URL *</label><input type="url" id="sub-url" placeholder="https://runwayml.com"/></div>
-      <div class="fg-row">
-        <div class="fg"><label>Category</label><select id="sub-cat"><option value="writing">Writing</option><option value="image">Image</option><option value="code">Code</option><option value="audio">Audio</option><option value="research">Research</option><option value="productivity">Productivity</option><option value="other">Other</option></select></div>
-        <div class="fg"><label>Pricing</label><select id="sub-price"><option value="free">Free</option><option value="freemium" selected>Freemium</option><option value="paid">Paid</option><option value="open">Open Source</option></select></div>
+  <!-- ═══ COMPARE PANEL ═══ -->
+  <div class="panel" id="panel-compare">
+    <div class="compare-view open" id="compare-view">
+      <div class="compare-header">
+        <h2>Tool Comparison</h2>
+        <button class="nb" onclick="switchTab('tools')">← Back to tools</button>
       </div>
-      <div class="fg"><label>Why should we add it?</label><textarea id="sub-desc" placeholder="What makes this tool stand out? Who is it best for?"></textarea></div>
-      <div class="fg"><label>Your Email (optional)</label><input type="email" id="sub-email" placeholder="you@example.com"/><p class="fg-note">// never shared, never marketed to</p></div>
-      <button class="mbtn primary" id="sub-btn" onclick="submitTool()">Submit Tool →</button>
+      <div id="compare-content"></div>
     </div>
   </div>
-</div>
 
-<!-- ═══ ADMIN ═══ -->
-<div class="panel" id="panel-admin">
-  <div class="admin-panel">
-    <h2>Admin — Pending Submissions</h2>
-    <div id="admin-content"><p style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">Sign in as admin to manage submissions.</p></div>
-  </div>
-</div>
-
-<!-- COMPARE BAR -->
-<div class="compare-bar" id="compare-bar">
-  <div class="compare-slots" id="compare-slots">
-    <div class="cslot" id="cslot-0">Select a tool to compare…</div>
-    <div class="cslot" id="cslot-1">Select a tool to compare…</div>
-    <div class="cslot" id="cslot-2">+ optional third tool</div>
-  </div>
-  <button class="compare-clear" onclick="clearCompare()">Clear</button>
-  <button class="compare-btn-go" onclick="runCompare()">Compare Now →</button>
-</div>
-
-<!-- TOOL MODAL -->
-<div class="modal-bg" id="modal">
-  <div class="modal">
-    <button class="modal-x" id="modal-x">✕</button>
-    <div class="modal-icon" id="m-icon"></div>
-    <div class="modal-name" id="m-name"></div>
-    <div class="modal-meta" id="m-meta"></div>
-    <div class="modal-why" id="m-why"></div>
-    <p class="modal-desc" id="m-desc"></p>
-    <div class="modal-price" id="m-price"></div>
-    <div id="m-solves-wrap"><div class="modal-section-title">What it solves</div><div class="solves-list" id="m-solves"></div></div>
-    <div id="m-int-wrap" style="margin-top:14px"><div class="modal-section-title">Integrations</div><div class="modal-integrations" id="m-ints"></div></div>
-    <div style="margin-top:14px"><div class="modal-section-title">Tags</div><div class="modal-tags-wrap" id="m-tags"></div></div>
-    <div class="modal-actions" style="margin-top:18px">
-      <a href="#" id="m-link" class="mbtn primary" target="_blank" rel="noopener">Visit Tool ↗</a>
-      <a href="#" id="m-aff" class="mbtn secondary" target="_blank" rel="noopener" style="display:none">Affiliate ↗</a>
-      <button class="mbtn secondary" id="m-bm">☆ Bookmark</button>
-      <button class="mbtn secondary" id="m-cmp">+ Compare</button>
+  <!-- ═══ WHAT TO USE FOR ═══ -->
+  <div class="panel" id="panel-wtuf">
+    <div class="wtuf-panel">
+      <h2>What AI tool should I use for…</h2>
+      <p>Quick answers to the most common AI tool questions. Click any use case to see the top picks and why.</p>
+      <div class="wtuf-search-wrap">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input id="wtuf-search" placeholder="e.g. writing emails, editing code, removing background…"
+          oninput="filterUseCases(this.value)" />
+      </div>
+      <div class="use-case-grid" id="uc-grid"></div>
     </div>
   </div>
-</div>
 
-<!-- AUTH MODAL -->
-<div class="modal-bg" id="auth-bg">
-  <div class="auth-modal">
-    <button class="modal-x" onclick="closeAuth()">✕</button>
-    <h2 id="auth-title">Sign In to ORBIT</h2>
-    <p id="auth-sub">Save bookmarks, get weekly digest.</p>
-    <div class="auth-err" id="auth-err"></div>
-    <div class="fg"><label>Email</label><input type="email" id="a-email" placeholder="you@example.com"/></div>
-    <div class="fg"><label>Password</label><input type="password" id="a-pw" placeholder="••••••••"/></div>
-    <button class="mbtn primary" style="width:100%" id="a-btn" onclick="doAuth()">Sign In</button>
-    <div class="auth-switch"><span id="a-sw-txt">No account?</span> <a onclick="toggleAuthMode()">Sign up free</a></div>
+  <!-- ═══ COLLECTIONS ═══ -->
+  <div class="panel" id="panel-collections">
+    <div class="collections-panel">
+      <h2>Curated Collections</h2>
+      <p>Handpicked tool stacks for specific jobs and workflows.</p>
+      <div class="coll-grid" id="coll-grid"></div>
+    </div>
   </div>
-</div>
 
-<div id="toast"></div>
+  <!-- ═══ CHANGELOG ═══ -->
+  <div class="panel" id="panel-changelog">
+    <div class="cl-panel" id="cl-content">
+      <p style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">loading changelog…</p>
+    </div>
+  </div>
 
-<footer>
-  <span>ORBIT v2.0 · Express + Supabase · Zero third-party ads</span>
-  <span>Updated weekly · <a href="javascript:void(0)" onclick="switchTab('submit')" style="color:var(--a2)">Submit a tool →</a></span>
-</footer>
-<script src="script.js"></script>
+  <!-- ═══ SUBMIT ═══ -->
+  <div class="panel" id="panel-submit">
+    <div class="sub-panel">
+      <h2>Submit a Tool</h2>
+      <p>Found a great AI tool we're missing? Submit it — we review every submission weekly and publish the best ones.
+        No account required.</p>
+      <div class="sub-success" id="sub-success">
+        <h3>🎉 Submission received!</h3>
+        <p>We review new tools every week. If it's a great fit, it'll appear in the next changelog update.</p>
+      </div>
+      <div id="sub-form">
+        <div class="fg"><label>Tool Name *</label><input type="text" id="sub-name" placeholder="e.g. Runway ML" /></div>
+        <div class="fg"><label>URL *</label><input type="url" id="sub-url" placeholder="https://runwayml.com" /></div>
+        <div class="fg-row">
+          <div class="fg"><label>Category</label><select id="sub-cat">
+              <option value="writing">Writing</option>
+              <option value="image">Image</option>
+              <option value="code">Code</option>
+              <option value="audio">Audio</option>
+              <option value="research">Research</option>
+              <option value="productivity">Productivity</option>
+              <option value="other">Other</option>
+            </select></div>
+          <div class="fg"><label>Pricing</label><select id="sub-price">
+              <option value="free">Free</option>
+              <option value="freemium" selected>Freemium</option>
+              <option value="paid">Paid</option>
+              <option value="open">Open Source</option>
+            </select></div>
+        </div>
+        <div class="fg"><label>Why should we add it?</label><textarea id="sub-desc"
+            placeholder="What makes this tool stand out? Who is it best for?"></textarea></div>
+        <div class="fg"><label>Your Email (optional)</label><input type="email" id="sub-email"
+            placeholder="you@example.com" />
+          <p class="fg-note">// never shared, never marketed to</p>
+        </div>
+        <button class="mbtn primary" id="sub-btn" onclick="submitTool()">Submit Tool →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ADMIN ═══ -->
+  <div class="panel" id="panel-admin">
+    <div class="admin-panel">
+      <h2>Admin — Pending Submissions</h2>
+      <div id="admin-content">
+        <p style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">Sign in as admin to manage
+          submissions.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE BAR -->
+  <div class="compare-bar" id="compare-bar">
+    <div class="compare-slots" id="compare-slots">
+      <div class="cslot" id="cslot-0">Select a tool to compare…</div>
+      <div class="cslot" id="cslot-1">Select a tool to compare…</div>
+      <div class="cslot" id="cslot-2">+ optional third tool</div>
+    </div>
+    <button class="compare-clear" onclick="clearCompare()">Clear</button>
+    <button class="compare-btn-go" onclick="runCompare()">Compare Now →</button>
+  </div>
+
+  <!-- TOOL MODAL -->
+  <div class="modal-bg" id="modal">
+    <div class="modal">
+      <button class="modal-x" id="modal-x">✕</button>
+      <div class="modal-icon" id="m-icon"></div>
+      <div class="modal-name" id="m-name"></div>
+      <div class="modal-meta" id="m-meta"></div>
+      <div class="modal-why" id="m-why"></div>
+      <p class="modal-desc" id="m-desc"></p>
+      <div class="modal-price" id="m-price"></div>
+      <div id="m-solves-wrap">
+        <div class="modal-section-title">What it solves</div>
+        <div class="solves-list" id="m-solves"></div>
+      </div>
+      <div id="m-int-wrap" style="margin-top:14px">
+        <div class="modal-section-title">Integrations</div>
+        <div class="modal-integrations" id="m-ints"></div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="modal-section-title">Tags</div>
+        <div class="modal-tags-wrap" id="m-tags"></div>
+      </div>
+      <div class="modal-actions" style="margin-top:18px">
+        <a href="#" id="m-link" class="mbtn primary" target="_blank" rel="noopener">Visit Tool ↗</a>
+        <a href="#" id="m-aff" class="mbtn secondary" target="_blank" rel="noopener" style="display:none">Affiliate
+          ↗</a>
+        <button class="mbtn secondary" id="m-bm">☆ Bookmark</button>
+        <button class="mbtn secondary" id="m-cmp">+ Compare</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-bg" id="auth-bg">
+    <div class="auth-modal">
+      <button class="modal-x" onclick="closeAuth()">✕</button>
+      <h2 id="auth-title">Sign In to ORBIT</h2>
+      <p id="auth-sub">Save bookmarks, get weekly digest.</p>
+      <div class="auth-err" id="auth-err"></div>
+      <div class="fg"><label>Email</label><input type="email" id="a-email" placeholder="you@example.com" /></div>
+      <div class="fg"><label>Password</label><input type="password" id="a-pw" placeholder="••••••••" /></div>
+      <button class="mbtn primary" style="width:100%" id="a-btn" onclick="doAuth()">Sign In</button>
+      <div class="auth-switch"><span id="a-sw-txt">No account?</span> <a onclick="toggleAuthMode()">Sign up free</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <footer>
+    <span>ORBIT v2.0 · Express + Supabase · Zero third-party ads</span>
+    <span>Updated weekly · <a href="javascript:void(0)" onclick="switchTab('submit')" style="color:var(--a2)">Submit a
+        tool →</a></span>
+  </footer>
+  <script src="script.js"></script>
 </body>
+
 </html>
