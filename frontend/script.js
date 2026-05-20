@@ -1,7 +1,6 @@
 
-
-const API_BASE = 'https://wxkvfbfuitbkptojfhpq.supabase.co'; 
-const SUPABASE_URL = 'https://your-project.supabase.co'; 
+const API_BASE = 'https://orbit-47wo.onrender.com/api'; 
+const SUPABASE_URL = 'https://wxkvfbfuitbkptojfhpq.supabase.co'; 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4a3ZmYmZ1aXRia3B0b2pmaHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMzc0NTcsImV4cCI6MjA5NDgxMzQ1N30.BNRBYB_Kg6ua0sq8H5U5bG93Bukm83wJ79eGA4-f__A'; 
 
 // ── Supabase client (auth only) ──────────────────────────────
