@@ -681,4 +681,4 @@ function toast(msg) {
 //  INIT
 // ═══════════════════════════════════════════════════
 loadTools();
-initAuth();
+// initAuth();
