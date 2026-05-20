@@ -1,71 +1,113 @@
-// backend/server.js
+// backend/server.js  —  production-hardened entry point
+'use strict';
 require('dotenv').config();
 
-const express = require('express');
-const cors    = require('cors');
-const helmet  = require('helmet');
-const rateLimit = require('express-rate-limit');
+// ── Validate required env vars before anything else ──────────────
+const REQUIRED_ENV = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'FRONTEND_URL'];
+const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missing.length) {
+  console.error(`[FATAL] Missing required environment variables: ${missing.join(', ')}`);
+  console.error('Copy .env.example to .env and fill in the values.');
+  process.exit(1);
+}
+
+const express    = require('express');
+const cors       = require('cors');
+const helmet     = require('helmet');
+const rateLimit  = require('express-rate-limit');
 
 const toolsRouter       = require('./routes/tools');
 const submissionsRouter = require('./routes/submissions');
 const changelogRouter   = require('./routes/changelog');
+const collectionsRouter = require('./routes/collections');
 
 const app  = express();
-const PORT = process.env.PORT || 4000;
-const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const PORT = parseInt(process.env.PORT, 10) || 4000;
+const isProd = process.env.NODE_ENV === 'production';
 
-// ── SECURITY ─────────────────────────────────────────────────────
-app.use(helmet());
+// ── SECURITY HEADERS ─────────────────────────────────────────────
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,  // allow embedding fonts/images
+  contentSecurityPolicy: isProd ? undefined : false
+}));
+
+// ── CORS ──────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.FRONTEND_URL || '')
+  .split(',').map(o => o.trim()).filter(Boolean);
 
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: (origin, cb) => {
+    // allow server-to-server (no origin) + listed origins
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
+app.options('*', cors());  // pre-flight all routes
 
-// Rate limiting: 120 req / 15 min per IP
-app.use('/api/', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 120,
+// ── RATE LIMITING ─────────────────────────────────────────────────
+const makeLimit = (max, windowMinutes, msg) => rateLimit({
+  windowMs: windowMinutes * 60 * 1000,
+  max,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please slow down.' }
-}));
+  message: { error: msg }
+});
 
-// Stricter limit for public submissions
-app.use('/api/submissions', rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
-  message: { error: 'Submission limit reached. Try again in an hour.' }
-}));
+app.use('/api/',            makeLimit(200, 15, 'Too many requests. Try again shortly.'));
+app.use('/api/submissions', makeLimit(5,   60, 'Submission limit reached. Try again in an hour.'));
 
 // ── BODY PARSING ─────────────────────────────────────────────────
-app.use(express.json({ limit: '16kb' }));
+app.use(express.json({ limit: '32kb' }));
+
+// ── REQUEST LOGGING (non-prod: console, prod: structured) ─────────
+app.use((req, _res, next) => {
+  if (isProd) {
+    // structured log for Render/Datadog/etc
+    process.stdout.write(JSON.stringify({
+      ts: new Date().toISOString(),
+      method: req.method,
+      path: req.path,
+      ip: req.ip
+    }) + '\n');
+  } else {
+    console.log(`${req.method} ${req.path}`);
+  }
+  next();
+});
 
 // ── HEALTH CHECK ─────────────────────────────────────────────────
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', ts: new Date().toISOString() });
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', env: process.env.NODE_ENV, ts: new Date().toISOString() });
 });
 
 // ── ROUTES ───────────────────────────────────────────────────────
 app.use('/api/tools',       toolsRouter);
 app.use('/api/submissions', submissionsRouter);
 app.use('/api/changelog',   changelogRouter);
+app.use('/api/collections', collectionsRouter);
 
 // ── 404 ───────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: `Route ${req.method} ${req.path} not found` });
 });
 
-// ── ERROR HANDLER ────────────────────────────────────────────────
-app.use((err, req, res, _next) => {
-  console.error('[Unhandled Error]', err);
-  res.status(500).json({ error: 'Internal server error' });
+// ── GLOBAL ERROR HANDLER ─────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  // Never leak stack traces in production
+  if (isProd) {
+    console.error('[Error]', err.message);
+    return res.status(err.status || 500).json({ error: 'Internal server error' });
+  }
+  console.error('[Error]', err);
+  res.status(err.status || 500).json({ error: err.message, stack: err.stack });
 });
 
 // ── START ────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n🚀 ORBIT API running on port ${PORT}`);
-  console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`   CORS origin: ${process.env.FRONTEND_URL || 'http://localhost:3000'}\n`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🚀  ORBIT API  |  port ${PORT}  |  ${process.env.NODE_ENV}`);
+  console.log(`   CORS origins: ${ALLOWED_ORIGINS.join(', ')}\n`);
 });
